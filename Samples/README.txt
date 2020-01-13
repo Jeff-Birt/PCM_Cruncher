@@ -1,0 +1,1 @@
+Samples should be 8bit signed PCM RAW file (no header).

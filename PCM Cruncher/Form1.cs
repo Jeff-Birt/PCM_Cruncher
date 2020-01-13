@@ -32,7 +32,6 @@ namespace PCM_Cruncher
             openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             openFileDialog1.ShowDialog();
             tbFile.Text = openFileDialog1.FileName;
-            //inputFileName = openFileDialog1.FileName;
         }
 
         /// <summary>
@@ -45,31 +44,37 @@ namespace PCM_Cruncher
             string inputFile = tbFile.Text;
             string outputFile = "";
 
-            if (inputFile != "")
+            if (File.Exists(inputFile))
             {
-                tbStatus.Text = "Processing" + Environment.NewLine;
+                tbStatus.Text += Environment.NewLine;
+                tbStatus.Text = "Scaling 8bit PCM 1-255 (_SCL)" + Environment.NewLine;
                 int minValue = 0; int maxValue = 0;
 
                 findMinMax(inputFile, true, ref minValue, ref maxValue);
                 double scalar = findScalar(minValue, maxValue);
                 double offset = -(maxValue - Math.Abs(minValue))/2.0;
 
-                tbStatus.Text += Environment.NewLine;
-                tbStatus.Text += "Min: " + minValue.ToString() + Environment.NewLine;
-                tbStatus.Text += "Max: " + maxValue.ToString() + Environment.NewLine;
+                tbStatus.Text += "Original Min: " + minValue.ToString() + Environment.NewLine;
+                tbStatus.Text += "Original Max: " + maxValue.ToString() + Environment.NewLine;
                 tbStatus.Text += "Offset: " + offset.ToString() + Environment.NewLine;
                 tbStatus.Text += "Scalar: " + scalar.ToString() + Environment.NewLine;
 
                 outputFile = scaleFile(inputFile, scalar, offset);
-                tbFile.Text = outputFile;
-                minValue = 128;
-                maxValue = 128;
-                findMinMax(outputFile, false, ref minValue, ref maxValue);
+                tbFile.Text = outputFile;   // update file name text box
+                
+                maxValue = 128; minValue = 128;
+                if (File.Exists(outputFile))
+                {
+                    findMinMax(outputFile, false, ref minValue, ref maxValue);
+                }
 
-                tbStatus.Text += Environment.NewLine;
                 tbStatus.Text += "Corrected Min: " + minValue.ToString() + Environment.NewLine;
                 tbStatus.Text += "Corrected Max: " + maxValue.ToString() + Environment.NewLine;
-                tbStatus.Text += Environment.NewLine + "Done";
+                tbStatus.Text += "Done" + Environment.NewLine;
+            }
+            else
+            {
+                tbStatus.Text += "Input file does not exist!";
             }
         }  
         
@@ -82,29 +87,30 @@ namespace PCM_Cruncher
         {
             string inputFile = tbFile.Text;
             string outputFile = "";
+            long outputFileSize = -1;
 
-            if (inputFile != "")
+            if (File.Exists(inputFile))
             {
                 outputFile = crunchFile(inputFile);
                 tbFile.Text = outputFile;
 
-                FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
-                long inputFileSize = inputfs.Length;
-                inputfs.Close();
-
-                tbStatus.Text += "Crunch 8bit PCM to packed 4bit PCM" + Environment.NewLine;
-                tbStatus.Text += "Input file size (bytes)" + inputFileSize.ToString() + Environment.NewLine;
-
-                if (outputFile != "")
+                if (File.Exists(outputFile))
                 {
-                    FileStream outputfs = new FileStream(outputFile, FileMode.Open, FileAccess.Read);
-                    long outputFileSize = outputfs.Length;
-                    outputfs.Close();
-
-                    tbStatus.Text += "Ouput file size (bytes)" + outputFileSize.ToString() + Environment.NewLine;
+                    outputFileSize =  new System.IO.FileInfo(outputFile).Length;
                 }
+                long inputFileSize = new System.IO.FileInfo(inputFile).Length;
 
+                tbStatus.Text += Environment.NewLine;
+                tbStatus.Text += "Crunch 8bit PCM to packed 4bit PCM (_CRN)" + Environment.NewLine;
+                tbStatus.Text += "Input file size (bytes): " + inputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += "Ouput file size (bytes): " + outputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += "Done" + Environment.NewLine;
             }
+            else
+            {
+                tbStatus.Text += "Input file does not exist!";
+            }
+
         }
 
         /// <summary>
@@ -116,35 +122,68 @@ namespace PCM_Cruncher
         {
             string inputFile = tbFile.Text;
             string outputFile = "";
+            long outputFileSize = -1;
 
-            List<int> value = new List<int>();
-            outputFile = rleCompress(inputFile, ref value);
-            tbFile.Text = outputFile;
+            if (File.Exists(inputFile))
+            {
+                List<int> value = new List<int>();
+                outputFile = rleCompress(inputFile, ref value);
+                tbFile.Text = outputFile;   // update file name text box
 
-            FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
-            long inputFileSize = inputfs.Length;
-            inputfs.Close();
+                if (File.Exists(outputFile))
+                {
+                    outputFileSize = new System.IO.FileInfo(outputFile).Length;
+                }
+                long inputFileSize = new System.IO.FileInfo(inputFile).Length;
 
-            FileStream outputfs = new FileStream(outputFile, FileMode.Open, FileAccess.Read);
-            long outputFileSize = outputfs.Length;
-            outputfs.Close();
-
-            tbStatus.Text += Environment.NewLine + "File RLE Analysis" + Environment.NewLine;
-            tbStatus.Text += "Input file size (bytes)" + inputFileSize.ToString() + Environment.NewLine;
-            tbStatus.Text += "Number of nibble clusters: " + value.Count + Environment.NewLine;
-            tbStatus.Text += "Total nibbles in clusters: " + value.Sum() + Environment.NewLine;
-            tbStatus.Text += "Output file size (bytes): " + outputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += Environment.NewLine;
+                tbStatus.Text += "RLE compress 4bit packed PCM (_RLE)" + Environment.NewLine;
+                tbStatus.Text += "Input file size (bytes): " + inputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += "Number of nibble clusters: " + value.Count + Environment.NewLine;
+                tbStatus.Text += "Nibble clusters size (bytes): " + (value.Count * 2) + Environment.NewLine;
+                tbStatus.Text += "Total nibbles in clusters: " + value.Sum() + Environment.NewLine;
+                tbStatus.Text += "Total bytes in clusters: " + value.Sum() / 2 + Environment.NewLine;
+                tbStatus.Text += "Output file size (bytes): " + outputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += "Done" + Environment.NewLine;
+            }
+            else
+            {
+                tbStatus.Text += "Input file does not exist!";
+            }
         }
 
         /// <summary>
-        /// 
+        /// Decompress RLE encoded file, used as a test
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void btnDecompress_Click(object sender, EventArgs e)
         {
             string inputFile = tbFile.Text;
-            rleDecompress(inputFile);
+            string outputFile = "";
+            long outputFileSize = -1;
+
+            if (File.Exists(inputFile))
+            {
+                outputFile = rleDecompress(inputFile);
+                tbFile.Text = outputFile;   // update file name text box
+
+                if (File.Exists(outputFile))
+                {
+                    outputFileSize = new System.IO.FileInfo(outputFile).Length;
+                }
+                long inputFileSize = new System.IO.FileInfo(inputFile).Length;
+
+                tbStatus.Text += Environment.NewLine;
+                tbStatus.Text += "RLE decompress 4bit packed PCM (_ELR)" + Environment.NewLine;
+                tbStatus.Text += "Input file size (bytes): " + inputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += "Output file size (bytes): " + outputFileSize.ToString() + Environment.NewLine;
+                tbStatus.Text += "Done" + Environment.NewLine;
+            }
+            else
+            {
+                tbStatus.Text += "Input file does not exist!";
+            }
         }
 
         #endregion UI
@@ -303,7 +342,6 @@ namespace PCM_Cruncher
         {
             string outputFile = "";
 
-            //List<int> value = new List<int>();
             int lastNibble = -1; int lowNibble = -1; int highNibble = -1; int count = 1;
             byte nextByte;
 
@@ -321,7 +359,7 @@ namespace PCM_Cruncher
                 for (long i = 0; i < fileSize; i++)
                 {
                     // if both nibbles are not -1 here we goofed and did not processes them last loop
-                    if (lowNibble != -1 | highNibble != -1) {tbStatus.Text += "Error!";}
+                    //if (lowNibble != -1 | highNibble != -1) {tbStatus.Text += "Error!";}
 
                       nextByte = fileReader.ReadByte();
                      lowNibble = (int)nextByte & 0x0F;
@@ -353,8 +391,9 @@ namespace PCM_Cruncher
                         else if (count > 5)
                         {
                             // if #nibbles >5 enough to REL
-                            value.Add(count);           // track stats
+                            int oldCount = count;
                             writeRLEPair(fileWriter, ref count, ref lastNibble, ref lowNibble);
+                            value.Add(oldCount - count);  // count only nibbles in pairs
                         }
                         else // count >= 1 and count < 5
                         {
@@ -420,8 +459,9 @@ namespace PCM_Cruncher
                             else if (count > 5)
                             {
                                 // nibbles >5 enough to write out RLE pair
-                                value.Add(count);
+                                int oldCount = count;
                                 writeRLEPair(fileWriter, ref count, ref lastNibble, ref highNibble);
+                                value.Add(oldCount - count); // count only nibbles in pairs
                             }
                             else // count > 1 and count < 5
                             {
@@ -461,10 +501,10 @@ namespace PCM_Cruncher
                 // *** need to handle a left over nibble or byte here
                 if (lastNibble != -1)
                 {
-                    tbStatus.Text += "count: " + count.ToString() + Environment.NewLine;
-                    tbStatus.Text += "lastNibble: " + lastNibble.ToString() + Environment.NewLine;
-                    tbStatus.Text += " lowNibble: " + lowNibble.ToString() + Environment.NewLine;
-                    tbStatus.Text += "highNibble: " + highNibble.ToString() + Environment.NewLine;
+                    //tbStatus.Text += "count: " + count.ToString() + Environment.NewLine;
+                    //tbStatus.Text += "lastNibble: " + lastNibble.ToString() + Environment.NewLine;
+                    //tbStatus.Text += " lowNibble: " + lowNibble.ToString() + Environment.NewLine;
+                    //tbStatus.Text += "highNibble: " + highNibble.ToString() + Environment.NewLine;
 
                     fileWriter.Write((byte)((lastNibble << 4) | lastNibble));
 
@@ -475,8 +515,7 @@ namespace PCM_Cruncher
                         fileWriter.Write((byte)((lastNibble << 4) | lastNibble));
                         count -= 2;
                     }
-                    tbStatus.Text += "final count: " + count.ToString() + Environment.NewLine;
-
+                    //tbStatus.Text += "final count: " + count.ToString() + Environment.NewLine;
                 }
 
                 fileReader.Close();
@@ -493,12 +532,12 @@ namespace PCM_Cruncher
         /// Uncompress an RLE compressed 4bit packed file
         /// </summary>
         /// <param name="inputFile"></param>
-        private void rleDecompress(string inputFile)
+        private string rleDecompress(string inputFile)
         {
             string outputFile = "";
 
             List<int> value = new List<int>();
-            int lastNibble = -1; int lowNibble = -1; int highNibble = -1; int count = 1;
+            int lastNibble = -1; int lowNibble = -1; int highNibble = -1; //int count = 1;
             byte nextByte; int temp;
 
             if (inputFile != "")
@@ -587,9 +626,14 @@ namespace PCM_Cruncher
 
                 }
 
+                fileReader.Close();
+                inputfs.Close();
 
+                fileWriter.Close();
+                outputfs.Close();
             }
 
+            return outputFile;
         }
 
         /// <summary>
