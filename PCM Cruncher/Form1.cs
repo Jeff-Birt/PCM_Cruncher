@@ -13,8 +13,9 @@ namespace PCM_Cruncher
 {
     public partial class Form1 : Form
     {
-        string inputFileName = "";
+        //string inputFileName = "";
 
+        #region UI
         public Form1()
         {
             InitializeComponent();
@@ -31,27 +32,7 @@ namespace PCM_Cruncher
             openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             openFileDialog1.ShowDialog();
             tbFile.Text = openFileDialog1.FileName;
-            inputFileName = openFileDialog1.FileName;
-            //outputFileName = Path.Combine(Path.GetDirectoryName(inputFileName),
-            //                          Path.GetFileNameWithoutExtension(inputFileName) + "_Crunched8" +
-            //                          Path.GetExtension(inputFileName) );
-        }
-
-        /// <summary>
-        /// Round up and downsample from 8bit to 4bit PCM
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void btnCrunch_Click(object sender, EventArgs e)
-        {
-            if (inputFileName != "")
-            {            
-                tbStats.Text = "Processing";
-
-                string outputFile = crunchFile(inputFileName);
-
-                tbStats.Text = "Done";
-            }
+            //inputFileName = openFileDialog1.FileName;
         }
 
         /// <summary>
@@ -61,57 +42,98 @@ namespace PCM_Cruncher
         /// <param name="e"></param>
         private void btnScale_Click(object sender, EventArgs e)
         {
+            string inputFile = tbFile.Text;
             string outputFile = "";
 
-            if (inputFileName != "")
+            if (inputFile != "")
             {
-                tbStats.Text = "Processing" + Environment.NewLine;
+                tbStatus.Text = "Processing" + Environment.NewLine;
+                int minValue = 0; int maxValue = 0;
 
-                int minValue = 0;
-                int maxValue = 0;
-
-                findMinMax(inputFileName, true, ref minValue, ref maxValue);
+                findMinMax(inputFile, true, ref minValue, ref maxValue);
                 double scalar = findScalar(minValue, maxValue);
+                double offset = -(maxValue - Math.Abs(minValue))/2.0;
 
-                tbStats.Text += Environment.NewLine;
-                tbStats.Text += "Min: " + minValue.ToString() + Environment.NewLine;
-                tbStats.Text += "Max: " + maxValue.ToString() + Environment.NewLine;
-                tbStats.Text += "Scalar: " + scalar.ToString() + Environment.NewLine;
+                tbStatus.Text += Environment.NewLine;
+                tbStatus.Text += "Min: " + minValue.ToString() + Environment.NewLine;
+                tbStatus.Text += "Max: " + maxValue.ToString() + Environment.NewLine;
+                tbStatus.Text += "Offset: " + offset.ToString() + Environment.NewLine;
+                tbStatus.Text += "Scalar: " + scalar.ToString() + Environment.NewLine;
 
-                outputFile = scaleFile(inputFileName, scalar);
+                outputFile = scaleFile(inputFile, scalar, offset);
+                tbFile.Text = outputFile;
                 minValue = 128;
                 maxValue = 128;
                 findMinMax(outputFile, false, ref minValue, ref maxValue);
 
-                tbStats.Text += "Corrected Min: " + minValue.ToString() + Environment.NewLine;
-                tbStats.Text += "Corrected Max: " + maxValue.ToString() + Environment.NewLine;
-                tbStats.Text += "Corrected Scalar: " + scalar.ToString() + Environment.NewLine;
+                tbStatus.Text += Environment.NewLine;
+                tbStatus.Text += "Corrected Min: " + minValue.ToString() + Environment.NewLine;
+                tbStatus.Text += "Corrected Max: " + maxValue.ToString() + Environment.NewLine;
+                tbStatus.Text += Environment.NewLine + "Done";
+            }
+        }  
+        
+        /// <summary>
+        /// Round up and downsample from 8bit to 4bit PCM
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnCrunch_Click(object sender, EventArgs e)
+        {
+            string inputFile = tbFile.Text;
+            string outputFile = "";
 
-                tbStats.Text += Environment.NewLine + "Done";
+            if (inputFile != "")
+            {
+                outputFile = crunchFile(inputFile);
+                tbFile.Text = outputFile;
+
+                FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
+                long inputFileSize = inputfs.Length;
+                inputfs.Close();
+
+                tbStatus.Text += "Crunch 8bit PCM to packed 4bit PCM" + Environment.NewLine;
+                tbStatus.Text += "Input file size (bytes)" + inputFileSize.ToString() + Environment.NewLine;
+
+                if (outputFile != "")
+                {
+                    FileStream outputfs = new FileStream(outputFile, FileMode.Open, FileAccess.Read);
+                    long outputFileSize = outputfs.Length;
+                    outputfs.Close();
+
+                    tbStatus.Text += "Ouput file size (bytes)" + outputFileSize.ToString() + Environment.NewLine;
+                }
+
             }
         }
 
         /// <summary>
-        /// 
+        /// RLE Compress file
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void btnAnalize_Click(object sender, EventArgs e)
+        private void btnCompress_Click(object sender, EventArgs e)
         {
-            List<int> value = rleCompress(inputFileName);
-            FileStream inputfs = new FileStream(inputFileName, FileMode.Open, FileAccess.Read);
-            long fileSize = inputfs.Length;
+            string inputFile = tbFile.Text;
+            string outputFile = "";
+
+            List<int> value = new List<int>();
+            outputFile = rleCompress(inputFile, ref value);
+            tbFile.Text = outputFile;
+
+            FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
+            long inputFileSize = inputfs.Length;
             inputfs.Close();
 
-            tbStats.Text += Environment.NewLine + "File REL Analysis" + Environment.NewLine;
-            tbStats.Text += "Number of nibble clusters: " + value.Count + Environment.NewLine;
-            tbStats.Text += "Total nibbles in clusters: " + value.Sum() + Environment.NewLine;
-            tbStats.Text += "File size (bytes): " + fileSize.ToString() + Environment.NewLine;
+            FileStream outputfs = new FileStream(outputFile, FileMode.Open, FileAccess.Read);
+            long outputFileSize = outputfs.Length;
+            outputfs.Close();
 
-            // REL file size fileSize - sum + count * 2
-            //long relFileSize = fileSize - value.Sum() + (value.Count * 2);
-            //tbStats.Text += "REL encode file size: " + relFileSize.ToString() + Environment.NewLine;
-
+            tbStatus.Text += Environment.NewLine + "File RLE Analysis" + Environment.NewLine;
+            tbStatus.Text += "Input file size (bytes)" + inputFileSize.ToString() + Environment.NewLine;
+            tbStatus.Text += "Number of nibble clusters: " + value.Count + Environment.NewLine;
+            tbStatus.Text += "Total nibbles in clusters: " + value.Sum() + Environment.NewLine;
+            tbStatus.Text += "Output file size (bytes): " + outputFileSize.ToString() + Environment.NewLine;
         }
 
         /// <summary>
@@ -121,9 +143,11 @@ namespace PCM_Cruncher
         /// <param name="e"></param>
         private void btnDecompress_Click(object sender, EventArgs e)
         {
-            rleDecompress(inputFileName);
+            string inputFile = tbFile.Text;
+            rleDecompress(inputFile);
         }
 
+        #endregion UI
 
         /// <summary>
         /// Find minimum and maximum byte values in abinary file
@@ -173,33 +197,22 @@ namespace PCM_Cruncher
         /// <returns></returns>
         private double findScalar(int minValue, int maxValue)
         {
-            double scalar = 0;
-            if (Math.Abs(minValue) > Math.Abs(maxValue))
-            {
-                scalar = 1 - Math.Abs(minValue) / 128.0;
-            }
-            else
-            {
-                scalar = 1 - Math.Abs(maxValue) / 128.0;
-            }
-            scalar += 1;
+            double span = Math.Abs(minValue) + maxValue;
 
-            return scalar;
+            return 255/span;
         }
 
         /// <summary>
-        /// Scakes binary file to byte range 0-255
+        /// Scales binary file to byte range 0-255
         /// </summary>
         /// <param name="inputFile"></param>
-        private string scaleFile(string inputFile, double scalar)
+        private string scaleFile(string inputFile, double scalar, double offset)
         {
             string outputFile = ""; // will return empty string if input filename empty
 
             if (inputFile != "")
             {
-                outputFile = Path.Combine(Path.GetDirectoryName(inputFile),
-                             Path.GetFileNameWithoutExtension(inputFile) + "_S" +
-                             Path.GetExtension(inputFile));
+                outputFile = buildOutputFileName(inputFile, "_SCL");
 
                 FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
                 BinaryReader fileReader = new BinaryReader(inputfs);
@@ -211,7 +224,10 @@ namespace PCM_Cruncher
 
                 for (long i = 0; i < fileSize; i++)
                 {
-                    int v1 = (int)((double)fileReader.ReadSByte() * scalar) + 128;
+                    int v1 = (int)(((double)fileReader.ReadSByte() + offset) * scalar) + 128;
+                    v1 = Math.Min(255, v1); // keep from going over
+                    v1 = Math.Max(0, v1);   // or under range
+
                     fileWriter.Write((byte)v1);
                 }
 
@@ -223,7 +239,6 @@ namespace PCM_Cruncher
             }
             return outputFile;
         }
- 
 
         /// <summary>
         /// Rounds a scaled file and downsample to 4bits, cruches two 4bit samples
@@ -235,13 +250,11 @@ namespace PCM_Cruncher
         {
             string outputFile = "";
 
-            if (inputFileName != "")
+            if (inputFile != "")
             {
-                outputFile = Path.Combine(Path.GetDirectoryName(inputFileName),
-                             Path.GetFileNameWithoutExtension(inputFileName) + "_RC" +
-                             Path.GetExtension(inputFileName));
+                outputFile = buildOutputFileName(inputFile, "_CRN");
 
-                FileStream inputfs = new FileStream(inputFileName, FileMode.Open, FileAccess.Read);
+                FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
                 BinaryReader fileReader = new BinaryReader(inputfs);
 
                 FileStream outputfs = new FileStream(outputFile, FileMode.CreateNew);
@@ -255,12 +268,13 @@ namespace PCM_Cruncher
                     byte nextByte = fileReader.ReadByte();
                     if (nextByte + 2 < 0xFF) { nextByte += 2; } // round up lower nibble
 
-                    // on odd bytes save upper nibble shifted to lower nibble position
-                    // on even bytes combine upper nibble of even with odd byte
-                    if ((i % 2) == 0) 
+                    // If this is an odd byte save upper nibble shifted to lower nibble position
+                    // If this is an even byte combine this upper nibble with last nibble
+                    if ((i % 2) == 0)
                     {
                         int highNibble = (int)nextByte & 0xF0;
                         lowNibble = lowNibble | highNibble;
+                        lowNibble = Math.Max(1, lowNibble); // make sure we have no 0x00 bytes
                         fileWriter.Write((byte)lowNibble);
                     }
                     else
@@ -285,19 +299,19 @@ namespace PCM_Cruncher
         /// </summary>
         /// <param name="inputFile"></param>
         /// <returns></returns>
-        private List<int> rleCompress(string inputFile)
+        private string rleCompress(string inputFile, ref List<int> value)
         {
             string outputFile = "";
 
-            List<int> value = new List<int>();
+            //List<int> value = new List<int>();
             int lastNibble = -1; int lowNibble = -1; int highNibble = -1; int count = 1;
             byte nextByte;
 
-            if (inputFileName != "")
+            if (inputFile != "")
             {
-                outputFile = buildOutputFileName(inputFileName, "_RLE");
+                outputFile = buildOutputFileName(inputFile, "_RLE");
 
-                FileStream inputfs = new FileStream(inputFileName, FileMode.Open, FileAccess.Read);
+                FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
                 BinaryReader fileReader = new BinaryReader(inputfs);
 
                 FileStream outputfs = new FileStream(outputFile, FileMode.CreateNew);
@@ -307,7 +321,7 @@ namespace PCM_Cruncher
                 for (long i = 0; i < fileSize; i++)
                 {
                     // if both nibbles are not -1 here we goofed and did not processes them last loop
-                    if (lowNibble != -1 | highNibble != -1) {tbStats.Text += "Error!";}
+                    if (lowNibble != -1 | highNibble != -1) {tbStatus.Text += "Error!";}
 
                       nextByte = fileReader.ReadByte();
                      lowNibble = (int)nextByte & 0x0F;
@@ -321,41 +335,31 @@ namespace PCM_Cruncher
                         // if we have a full set of nibbles, write out RLE byte pair
                         if (count == 15) 
                         {
-                            fileWriter.Write((byte)0x00); // RLE flag
-                            fileWriter.Write((byte)((count << 4) | lastNibble)); // #nibbes|nibble_value
-
-                            lastNibble = highNibble;    // skip highNibble test below as we
-                            highNibble = -1;            // have the high nibble left over
-                            count = 1;                  // and need it to start a 'new' pass
+                            value.Add(count);           // track stats
+                            writeRLEPair(fileWriter, ref count, ref lastNibble, ref highNibble);
                         }
-
                         lowNibble = -1;                 // low nibble was consumed
                     }
 
-                    // if lowNibble not consumed above check if we should write it out
+                    // if lowNibble not consumed above keep processing it
                     if (lowNibble != -1)
                     {
                         // Are we are on a 'new' pass.
                         if ( (count == 1) & (lastNibble == -1) )
                         {
-                            lastNibble = lowNibble; // Promote lastNibble for highNibble test below
-                            lowNibble = -1;         // consumed it flag
+                            lastNibble = lowNibble;     // Promote lastNibble for highNibble testing below
+                            lowNibble = -1;             // consumed it flag
                         }
                         else if (count > 5)
                         {
                             // if #nibbles >5 enough to REL
-                            value.Add(count);
-
-                            fileWriter.Write((byte)0x00); // RLE flag
-                            fileWriter.Write((byte)((count << 4) | lastNibble)); // #nibbes|nibble_value
-
-                            lastNibble = lowNibble;    // skip highNibble test below as we
-                            lowNibble = -1;            // have the high nibble left over
-                            count = 1;                 // and need it to start a 'new' pass
+                            value.Add(count);           // track stats
+                            writeRLEPair(fileWriter, ref count, ref lastNibble, ref lowNibble);
                         }
                         else // count >= 1 and count < 5
                         {
                             // if count > 1 we did not have enough nibbles for an RLE pair 
+                            // write out as many lastNibble pairs as possible
                             while (count > 1)
                             {
                                 fileWriter.Write((byte)((lastNibble << 4) | lastNibble));
@@ -392,18 +396,16 @@ namespace PCM_Cruncher
                             count++;
 
                             // if we have a full set of nibbles write out RLE pair
+                            // lowNibble is being used as placeholder, it is already == -1
                             if (count == 15)
                             {
-                                fileWriter.Write((byte)0x00); // RLE flag
-                                fileWriter.Write((byte)((count << 4) | lastNibble)); // #nibbes|nibble_value
-
-                                lastNibble = -1;    // we have consumed lastNibble
-                                count = 1;          // and need it to start a 'new' pass
+                                value.Add(count);           // track stats
+                                writeRLEPair(fileWriter, ref count, ref lastNibble, ref lowNibble);
                             }
                             highNibble = -1;        // highNibble was consumed
                         }
 
-                        // do we stil have teh highNibble left?
+                        // Is highNibble still left, if so keep processing
                         if (highNibble != -1)
                         {
                             // highNibble != lastNibble and count == 1 write out byte
@@ -411,35 +413,30 @@ namespace PCM_Cruncher
                             {
                                 fileWriter.Write((byte)((highNibble << 4) | lastNibble));
 
-                                lastNibble = -1;    // tag as used, flag new pass
-                                highNibble = -1;    // tag as used
+                                lastNibble = -1;    // consumed it flag, flags new pass
+                                highNibble = -1;    // consumed it flag
                                 count = 1;
                             }
                             else if (count > 5)
                             {
                                 // nibbles >5 enough to write out RLE pair
                                 value.Add(count);
-
-                                fileWriter.Write((byte)0x00); // RLE flag
-                                fileWriter.Write((byte)((count << 4) | lastNibble)); // #nibbes|nibble_value
-
-                                lastNibble = highNibble;    // promote highNibble to LastNibble
-                                highNibble = -1;            // we have consumed highNibble
-                                count = 1;
+                                writeRLEPair(fileWriter, ref count, ref lastNibble, ref highNibble);
                             }
                             else // count > 1 and count < 5
                             {
                                 // we did not have enough nibbles for an RLE pair 
                                 // we have #n nibbles of lastNibble to write
-                                // make byte of two last nibbles, write out count / 2 byt
-                                for (int j = 0; j < count / 2; j++)
+                                // make byte of two lastNibble, write out count / 2 byt
+                                while (count > 1)
                                 {
                                     fileWriter.Write((byte)((lastNibble << 4) | lastNibble));
+                                    count -= 2;
                                 }
 
                                 // if odd number of nibbles one will be left over from above 
                                 // make nibble of lastNibble | highNibble, write it out
-                                if (count % 2 != 0)
+                                if (count == 1)
                                 {
                                     fileWriter.Write((byte)((highNibble << 4) | lastNibble));
 
@@ -462,14 +459,12 @@ namespace PCM_Cruncher
                 } // end of file processing
 
                 // *** need to handle a left over nibble or byte here
-                // *** check count and crate byte of lastNibble << 4 | lastNibble
-                // *** not sure what to do if only a nibble is left over
                 if (lastNibble != -1)
                 {
-                    tbStats.Text += "count: " + count.ToString() + Environment.NewLine;
-                    tbStats.Text += "lastNibble: " + lastNibble.ToString() + Environment.NewLine;
-                    tbStats.Text += " lowNibble: " + lowNibble.ToString() + Environment.NewLine;
-                    tbStats.Text += "highNibble: " + highNibble.ToString() + Environment.NewLine;
+                    tbStatus.Text += "count: " + count.ToString() + Environment.NewLine;
+                    tbStatus.Text += "lastNibble: " + lastNibble.ToString() + Environment.NewLine;
+                    tbStatus.Text += " lowNibble: " + lowNibble.ToString() + Environment.NewLine;
+                    tbStatus.Text += "highNibble: " + highNibble.ToString() + Environment.NewLine;
 
                     fileWriter.Write((byte)((lastNibble << 4) | lastNibble));
 
@@ -480,7 +475,7 @@ namespace PCM_Cruncher
                         fileWriter.Write((byte)((lastNibble << 4) | lastNibble));
                         count -= 2;
                     }
-                    tbStats.Text += "final count: " + count.ToString() + Environment.NewLine;
+                    tbStatus.Text += "final count: " + count.ToString() + Environment.NewLine;
 
                 }
 
@@ -491,7 +486,7 @@ namespace PCM_Cruncher
                 outputfs.Close();
             }
 
-            return value;
+            return outputFile;
         }
 
         /// <summary>
@@ -506,13 +501,11 @@ namespace PCM_Cruncher
             int lastNibble = -1; int lowNibble = -1; int highNibble = -1; int count = 1;
             byte nextByte; int temp;
 
-            if (inputFileName != "")
+            if (inputFile != "")
             {
-                outputFile = Path.Combine(Path.GetDirectoryName(inputFileName),
-                             Path.GetFileNameWithoutExtension(inputFileName) + "_ELR" +
-                             Path.GetExtension(inputFileName));
+                outputFile = buildOutputFileName(inputFile, "_ELR");
 
-                FileStream inputfs = new FileStream(inputFileName, FileMode.Open, FileAccess.Read);
+                FileStream inputfs = new FileStream(inputFile, FileMode.Open, FileAccess.Read);
                 BinaryReader fileReader = new BinaryReader(inputfs);
 
                 FileStream outputfs = new FileStream(outputFile, FileMode.CreateNew);
@@ -523,7 +516,7 @@ namespace PCM_Cruncher
                 {
                     if (lowNibble != -1 | highNibble != -1)
                     {
-                        tbStats.Text += "Error";
+                        tbStatus.Text += "Error";
                     }
 
                     nextByte = nextByte = fileReader.ReadByte();
@@ -600,19 +593,34 @@ namespace PCM_Cruncher
         }
 
         /// <summary>
+        /// Helper to write out an RLE 'pair',
+        /// a byte where high nibble is # of encoded nibbles, and low nibble is value of encoded nibbles
+        /// </summary>
+        /// <param name="fileWriter"></param>
+        /// <param name="count"></param>
+        /// <param name="lastNibble"></param>
+        /// <param name="sourceNibble"></param>
+        private void writeRLEPair(BinaryWriter fileWriter, ref int count, ref int lastNibble, ref int sourceNibble)
+        {
+            fileWriter.Write((byte)0x00); // RLE flag
+            fileWriter.Write((byte)((count << 4) | lastNibble)); // #nibbes|nibble_value
+
+            lastNibble = sourceNibble;    // consumed lastNibble replace with sourceNibble
+            sourceNibble = -1;            // flag sourceNibble consumed
+            count = 1;                    // reset count
+        }
+
+        /// <summary>
         /// Helper to build output file name
         /// </summary>
         /// <param name="inputFile"></param>
         /// <returns></returns>
         private string buildOutputFileName(string inputFile, string fileType)
         {
-            return  Path.Combine(Path.GetDirectoryName(inputFileName),
-                    Path.GetFileNameWithoutExtension(inputFileName) + fileType +
-                    Path.GetExtension(inputFileName));
+            return  Path.Combine(Path.GetDirectoryName(inputFile),
+                    Path.GetFileNameWithoutExtension(inputFile) + fileType +
+                    Path.GetExtension(inputFile));
         }
-
-
-
 
 
     }

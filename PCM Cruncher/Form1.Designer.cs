@@ -32,7 +32,7 @@
             this.tbFile = new System.Windows.Forms.TextBox();
             this.btnCrunch = new System.Windows.Forms.Button();
             this.btnScale = new System.Windows.Forms.Button();
-            this.tbStats = new System.Windows.Forms.TextBox();
+            this.tbStatus = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.btnCompress = new System.Windows.Forms.Button();
             this.btnDecompress = new System.Windows.Forms.Button();
@@ -57,7 +57,7 @@
             // 
             // btnCrunch
             // 
-            this.btnCrunch.Location = new System.Drawing.Point(41, 92);
+            this.btnCrunch.Location = new System.Drawing.Point(41, 136);
             this.btnCrunch.Name = "btnCrunch";
             this.btnCrunch.Size = new System.Drawing.Size(75, 23);
             this.btnCrunch.TabIndex = 2;
@@ -67,7 +67,7 @@
             // 
             // btnScale
             // 
-            this.btnScale.Location = new System.Drawing.Point(41, 139);
+            this.btnScale.Location = new System.Drawing.Point(41, 92);
             this.btnScale.Name = "btnScale";
             this.btnScale.Size = new System.Drawing.Size(75, 23);
             this.btnScale.TabIndex = 4;
@@ -75,14 +75,14 @@
             this.btnScale.UseVisualStyleBackColor = true;
             this.btnScale.Click += new System.EventHandler(this.btnScale_Click);
             // 
-            // tbStats
+            // tbStatus
             // 
-            this.tbStats.Location = new System.Drawing.Point(194, 94);
-            this.tbStats.Multiline = true;
-            this.tbStats.Name = "tbStats";
-            this.tbStats.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.tbStats.Size = new System.Drawing.Size(499, 281);
-            this.tbStats.TabIndex = 5;
+            this.tbStatus.Location = new System.Drawing.Point(194, 94);
+            this.tbStatus.Multiline = true;
+            this.tbStatus.Name = "tbStatus";
+            this.tbStatus.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.tbStatus.Size = new System.Drawing.Size(499, 281);
+            this.tbStatus.TabIndex = 5;
             // 
             // label1
             // 
@@ -102,7 +102,7 @@
             this.btnCompress.TabIndex = 7;
             this.btnCompress.Text = "RLE Compress";
             this.btnCompress.UseVisualStyleBackColor = true;
-            this.btnCompress.Click += new System.EventHandler(this.btnAnalize_Click);
+            this.btnCompress.Click += new System.EventHandler(this.btnCompress_Click);
             // 
             // btnDecompress
             // 
@@ -122,7 +122,7 @@
             this.Controls.Add(this.btnDecompress);
             this.Controls.Add(this.btnCompress);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.tbStats);
+            this.Controls.Add(this.tbStatus);
             this.Controls.Add(this.btnScale);
             this.Controls.Add(this.btnCrunch);
             this.Controls.Add(this.tbFile);
@@ -140,7 +140,7 @@
         private System.Windows.Forms.TextBox tbFile;
         private System.Windows.Forms.Button btnCrunch;
         private System.Windows.Forms.Button btnScale;
-        private System.Windows.Forms.TextBox tbStats;
+        private System.Windows.Forms.TextBox tbStatus;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button btnCompress;
         private System.Windows.Forms.Button btnDecompress;
