@@ -341,6 +341,7 @@ namespace PCM_Cruncher
         private string rleCompress(string inputFile, ref List<int> value)
         {
             string outputFile = "";
+            int maxNibblesInCluster = 16;
 
             int lastNibble = -1; int lowNibble = -1; int highNibble = -1; int count = 1;
             byte nextByte;
@@ -366,12 +367,12 @@ namespace PCM_Cruncher
                     highNibble = (int)nextByte >> 4;
 
                     // if lowNibble matches previous nibble (lastNibble) 
-                    if ( (lowNibble == lastNibble) & (count < 15) )
+                    if ( (lowNibble == lastNibble) & (count < maxNibblesInCluster) )
                     {
                         count++; // keep track of the number of matching nibbles
 
                         // if we have a full set of nibbles, write out RLE byte pair
-                        if (count == 15) 
+                        if (count == maxNibblesInCluster) 
                         {
                             value.Add(count);           // track stats
                             writeRLEPair(fileWriter, ref count, ref lastNibble, ref highNibble);
@@ -436,7 +437,7 @@ namespace PCM_Cruncher
 
                             // if we have a full set of nibbles write out RLE pair
                             // lowNibble is being used as placeholder, it is already == -1
-                            if (count == 15)
+                            if (count == maxNibblesInCluster)
                             {
                                 value.Add(count);           // track stats
                                 writeRLEPair(fileWriter, ref count, ref lastNibble, ref lowNibble);
@@ -535,6 +536,7 @@ namespace PCM_Cruncher
         private string rleDecompress(string inputFile)
         {
             string outputFile = "";
+            //int maxNibblesInCluster = 16;
 
             List<int> value = new List<int>();
             int lastNibble = -1; int lowNibble = -1; int highNibble = -1; //int count = 1;
@@ -569,7 +571,7 @@ namespace PCM_Cruncher
                         // read next byte in as it is an RLE byte
                         nextByte = nextByte = fileReader.ReadByte();
                         lowNibble = (int)nextByte & 0x0F; // low nibble
-                        highNibble = (int)nextByte >> 4;   // high nibble
+                        highNibble = ((int)nextByte >> 4) + 1;   // high nibble
 
                         // We need to write out #highNibble values of lowNibble 
                         // if we have a left over nibble we need to consume it first
@@ -583,15 +585,15 @@ namespace PCM_Cruncher
                         }
 
                         // now write out remaining nibbles packed in bytes
-                        temp = (lowNibble << 4) | lowNibble;
-                        for (int j = 0; j < highNibble / 2; j++)
+                        while (highNibble > 1)
                         {
-                            fileWriter.Write((byte)temp); // #nibbes|nibble_value
+                            fileWriter.Write((byte)((lowNibble << 4) | lowNibble)); // #nibbes|nibble_value
+                            highNibble -= 2;
                         }
                         lastNibble = -1;    // flag as used
 
                         // If a nibble is left over save it as lastNibble
-                        if (highNibble % 2 != 0)
+                        if (highNibble == 1)
                         {
                             lastNibble = lowNibble;
                         }
@@ -615,8 +617,7 @@ namespace PCM_Cruncher
                         else
                         {
                             // we have a nibble left over we need to consume
-                            temp = (lowNibble << 4) | lastNibble;
-                            fileWriter.Write((byte)temp); // 
+                            fileWriter.Write((byte)((lowNibble << 4) | lastNibble)); // 
 
                             lastNibble = highNibble; // now save left over highNibble
                             lowNibble = -1;     // flag as used
@@ -647,7 +648,7 @@ namespace PCM_Cruncher
         private void writeRLEPair(BinaryWriter fileWriter, ref int count, ref int lastNibble, ref int sourceNibble)
         {
             fileWriter.Write((byte)0x00); // RLE flag
-            fileWriter.Write((byte)((count << 4) | lastNibble)); // #nibbes|nibble_value
+            fileWriter.Write((byte)((count-1 << 4) | lastNibble)); // #nibbes|nibble_value
 
             lastNibble = sourceNibble;    // consumed lastNibble replace with sourceNibble
             sourceNibble = -1;            // flag sourceNibble consumed
